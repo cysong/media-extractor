@@ -43,6 +43,6 @@ def extract_media(url):
     media_urls = extractor.extract(url)
 
     if 'error' in media_urls:
-        return jsonify({'error': media_urls['error']}), 500
+        return jsonify(media_urls), 500
 
     return jsonify(media_urls), 200
