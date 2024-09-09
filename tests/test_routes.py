@@ -83,7 +83,7 @@ def test_twitter_video(client):
     
 def test_youtube_video(client):
     """
-    测试特定 Twitter 视频 URL。
+    测试特定Youtube视频 URL。
     """
     response = client.post('/get-media', json={'url': 'https://www.youtube.com/watch?v=KWdhcOtGtcE'})
     assert response.status_code == 200
@@ -99,3 +99,42 @@ def test_youtube_video(client):
     # 具体的断言可能需要根据实际情况调整，比如检查返回的 URL 是否符合预期
     for resolution, url in data.items():
         assert url.startswith('http')  # 确保每个 URL 都是有效的 HTTP URL
+
+
+def test_instagram_video(client):
+    """
+    测试特定Instagram视频 URL。
+    """
+    response = client.post('/get-media', json={'url': 'https://www.instagram.com/reel/C_jZKM4Ij3t/?utm_source=ig_web_copy_link'})
+    assert response.status_code == 200
+    
+    print(response.data)
+    data = json.loads(response.data)
+    assert isinstance(data, dict)  # 确保返回的是字典
+
+    # 根据 `TwitterExtractor` 的实现来验证返回的内容
+    # 这里的断言依赖于解析器的具体实现，可以根据实际返回的结果进行调整
+    # assert '1080p' in data or '720p' in data or '480p' in data  # 检查是否有视频清晰度地址
+    
+    # 具体的断言可能需要根据实际情况调整，比如检查返回的 URL 是否符合预期
+    for resolution, url in data.items():
+        assert url.startswith('http')  # 确保每个 URL 都是有效的 HTTP URL
+
+# def test_instagram_image(client):
+#     """
+#     测试特定Instagram视频 URL。
+#     """
+#     response = client.post('/get-media', json={'url': 'https://www.instagram.com/p/C_nJ4xpO6k4/?utm_source=ig_web_copy_link'})
+#     assert response.status_code == 200
+    
+#     print(response.data)
+#     data = json.loads(response.data)
+#     assert isinstance(data, dict)  # 确保返回的是字典
+
+#     # 根据 `TwitterExtractor` 的实现来验证返回的内容
+#     # 这里的断言依赖于解析器的具体实现，可以根据实际返回的结果进行调整
+#     # assert '1080p' in data or '720p' in data or '480p' in data  # 检查是否有视频清晰度地址
+    
+#     # 具体的断言可能需要根据实际情况调整，比如检查返回的 URL 是否符合预期
+#     for resolution, url in data.items():
+#         assert url.startswith('http')  # 确保每个 URL 都是有效的 HTTP URL
