@@ -26,16 +26,17 @@ def get_media():
     """
     data = request.get_json()
     url = data.get('url')
-    return extract_media(url)
-
-
-def extract_media(url):
+    
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
     if not is_valid_url(url):
         return jsonify({'error': 'Invalid URL'}), 400
 
+    return extract_media(url)
+
+
+def extract_media(url):
     extractor = get_extractor(url)
     if not extractor:
         return jsonify({'error': ERROR_MESSAGES['no_extractor']}), 400
