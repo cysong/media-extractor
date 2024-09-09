@@ -1,5 +1,6 @@
 from app.log import logger, progress_hook
 
+DATABASE = 'media.db'
 
 YT_DLP_OPTS = {
     'quiet': False,
@@ -14,7 +15,7 @@ YT_DLP_OPTS = {
         'key': 'FFmpegVideoConvertor',
         'preferedformat': 'mp4',  # Convert to MP4 format if needed
     }],
-    'format': 'bestvideo+bestaudio/best',  # Download best video and audio combination
+    'format': 'bestvideo[ext!=m3u8]+bestaudio[ext!=m3u8]/best[ext!=m3u8]',  # Download best video and audio combination
     'logger': logger,
     'progress_hooks': [progress_hook],
 }
