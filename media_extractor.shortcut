@@ -1,0 +1,138 @@
+{
+    "actions": [
+        {
+            "type": "SetVariable",
+            "name": "快捷指令信息",
+            "value": {
+                "作者": "cysong",
+                "版本": "1",
+                "描述": "此快捷指令用于提取视频下载地址，理论上支持超过1000+网站，如果有任何问题欢迎提issue，仓库地址：https://github.com/cysong/media-extractor"
+            }
+        },
+        {
+            "type": "GetSharedItems",
+            "name": "获取共享的内容"
+        },
+        {
+            "type": "If",
+            "condition": "获取共享的内容 != ''",
+            "actions": [
+                {
+                    "type": "GetVariable",
+                    "variable": "获取共享的内容",
+                    "name": "获取共享的 URL"
+                }
+            ],
+            "otherwise": [
+                {
+                    "type": "GetClipboard",
+                    "name": "获取剪贴板内容"
+                },
+                {
+                    "type": "If",
+                    "condition": "获取剪贴板内容 contains 'http'",
+                    "actions": [
+                        {
+                            "type": "SetVariable",
+                            "name": "获取共享的 URL",
+                            "value": "获取剪贴板内容"
+                        }
+                    ],
+                    "otherwise": [
+                        {
+                            "type": "ShowAlert",
+                            "title": "错误",
+                            "message": "未找到有效的URL，请确保剪贴板中有有效的链接。",
+                            "name": "显示错误"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "GetContentsOfURL",
+            "url": "https://media-extractor.azurewebsites.net/get-media",
+            "method": "POST",
+            "requestBody": {
+                "url": "获取共享的 URL"
+            },
+            "name": "获取内容"
+        },
+        {
+            "type": "If",
+            "condition": "获取内容.statusCode != 200",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "错误",
+                    "message": "请求失败，状态码: 获取内容.statusCode",
+                    "name": "显示错误"
+                }
+            ]
+        },
+        {
+            "type": "If",
+            "condition": "获取内容 is not valid",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "错误",
+                    "message": "无法获取内容，请检查 URL 是否有效。",
+                    "name": "显示错误"
+                }
+            ]
+        },
+        {
+            "type": "GetDictionaryKeys",
+            "dictionary": "获取内容",
+            "name": "获取所有分辨率"
+        },
+        {
+            "type": "If",
+            "condition": "获取所有分辨率 is empty",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "错误",
+                    "message": "未找到可用的分辨率，请检查视频链接。",
+                    "name": "显示错误"
+                }
+            ]
+        },
+        {
+            "type": "ChooseFromList",
+            "prompt": "选择视频清晰度",
+            "list": "获取所有分辨率",
+            "name": "选择清晰度"
+        },
+        {
+            "type": "GetDictionaryValue",
+            "dictionary": "获取内容",
+            "key": "选择清晰度",
+            "name": "获取用户选择的链接"
+        },
+        {
+            "type": "GetContentsOfURL",
+            "url": "获取用户选择的链接",
+            "method": "GET",
+            "name": "下载视频"
+        },
+        {
+            "type": "If",
+            "condition": "下载视频 is not valid",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "错误",
+                    "message": "下载视频失败，请重试。",
+                    "name": "显示错误"
+                }
+            ]
+        },
+        {
+            "type": "Share",
+            "input": "下载视频",
+            "name": "分享视频"
+        }
+    ]
+}
