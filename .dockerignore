@@ -8,6 +8,7 @@ tests/
 logs/
 *.md
 *.db
+requirements-dev.txt
 *.shortcut
 __pycache__
 *.py[cod]

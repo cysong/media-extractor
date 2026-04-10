@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install yt-dlp boto3 pytest
+        run: pip install -r requirements-dev.txt
 
       - name: Run unit tests
         run: pytest tests/ -m "not integration" -v
