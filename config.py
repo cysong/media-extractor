@@ -7,7 +7,6 @@ YT_DLP_OPTS = {
     'skip_download': True,
     'check_formats': False,
     'format_sort': ['res', 'br', 'size'],  # Sort by resolution, bitrate, and size
-    'noplaylist': True,  # Download the video instead of the playlist
     'hls_use_mpegts': True,  # Use MPEG-TS format for HLS streams
     'postprocessors': [{
         'key': 'FFmpegVideoConvertor',
