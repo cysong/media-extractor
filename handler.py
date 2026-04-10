@@ -1,4 +1,5 @@
 import json
+import os
 from urllib.parse import urlparse
 
 from app.extractors import get_extractor
@@ -6,6 +7,8 @@ from app.extractors import get_extractor
 ERROR_NO_URL = 'URL is required'
 ERROR_INVALID_URL = 'Invalid URL'
 ERROR_NO_EXTRACTOR = 'No suitable extractor found for this URL'
+
+_API_KEY = os.environ.get('API_KEY')
 
 
 def _is_valid_url(url: str) -> bool:
@@ -25,6 +28,11 @@ def _response(status_code: int, body: dict) -> dict:
 
 
 def lambda_handler(event, context):
+    if _API_KEY:
+        headers = event.get('headers') or {}
+        if headers.get('x-api-key') != _API_KEY:
+            return _response(401, {'error': 'Unauthorized'})
+
     try:
         body = json.loads(event.get('body') or '{}')
     except (json.JSONDecodeError, TypeError):
