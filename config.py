@@ -1,8 +1,14 @@
 import os
 
-from app.log import logger, progress_hook
+from app.log import logger
 
 _verbose = os.environ.get('YT_DLP_VERBOSE', 'false').lower() == 'true'
+
+
+def _progress_hook(d):
+    if d['status'] == 'finished':
+        logger.info("Download finished, now post-processing ...")
+
 
 YT_DLP_OPTS = {
     'quiet': not _verbose,
@@ -10,14 +16,13 @@ YT_DLP_OPTS = {
     'noplaylist': True,
     'skip_download': True,
     'check_formats': False,
-    'format_sort': ['res', 'br', 'size'],  # Sort by resolution, bitrate, and size
-    'hls_use_mpegts': True,  # Use MPEG-TS format for HLS streams
+    'format_sort': ['res', 'br', 'size'],
+    'hls_use_mpegts': True,
     'postprocessors': [{
         'key': 'FFmpegVideoConvertor',
-        'preferedformat': 'mp4',  # Convert to MP4 format if needed
+        'preferedformat': 'mp4',
     }],
-    'format': 'bestvideo[ext!=m3u8]+bestaudio[ext!=m3u8]/best[ext!=m3u8]',  # Download best video and audio combination
+    'format': 'bestvideo[ext!=m3u8]+bestaudio[ext!=m3u8]/best[ext!=m3u8]',
     'logger': logger,
-    'progress_hooks': [progress_hook],
+    'progress_hooks': [_progress_hook],
 }
-

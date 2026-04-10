@@ -26,8 +26,3 @@ def _build_logger() -> logging.Logger:
 
 
 logger = _build_logger()
-
-
-def progress_hook(d):
-    if d['status'] == 'finished':
-        logger.info("Download finished, now post-processing ...")
