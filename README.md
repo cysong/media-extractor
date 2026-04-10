@@ -49,11 +49,13 @@ Add the following secrets to your GitHub repository (Settings → Secrets and va
 
 | Secret | Description |
 |--------|-------------|
-| `AWS_ACCESS_KEY_ID` | IAM user access key |
-| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| `AWS_ROLE_ARN` | OIDC role ARN, e.g. `arn:aws:iam::123456789:role/github-actions-role` |
 | `AWS_REGION` | Target region, e.g. `ap-southeast-2` |
 
-The IAM user needs permissions to create ECR, DynamoDB, IAM, Lambda, and API Gateway resources.
+Authentication uses GitHub OIDC — no long-lived AWS access keys required. Set up once in AWS IAM:
+1. Create an OIDC provider for `token.actions.githubusercontent.com`
+2. Create an IAM Role with a trust policy scoped to your repository
+3. Attach permissions: ECR, DynamoDB, IAM, Lambda, API Gateway
 
 ### First-time setup
 
