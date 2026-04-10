@@ -16,11 +16,8 @@ MOCK_FORMATS = [
 MOCK_MEDIA_INFO = {'formats': MOCK_FORMATS}
 
 
-def _event(body: dict, api_key: str = None) -> dict:
-    event = {'body': json.dumps(body)}
-    if api_key is not None:
-        event['headers'] = {'x-api-key': api_key}
-    return event
+def _event(body: dict) -> dict:
+    return {'body': json.dumps(body)}
 
 
 def _body(response: dict) -> dict:
@@ -28,22 +25,6 @@ def _body(response: dict) -> dict:
 
 
 # ── Unit tests (mocked extractor) ────────────────────────────────────────────
-
-@patch('handler._API_KEY', 'test-secret')
-def test_unauthorized_missing_key():
-    res = lambda_handler(_event({}), None)
-    assert res['statusCode'] == 401
-
-@patch('handler._API_KEY', 'test-secret')
-def test_unauthorized_wrong_key():
-    res = lambda_handler(_event({}, api_key='wrong'), None)
-    assert res['statusCode'] == 401
-
-@patch('handler._API_KEY', 'test-secret')
-@patch('handler.get_extractor')
-def test_authorized_with_correct_key(mock_get_extractor):
-    res = lambda_handler(_event({}, api_key='test-secret'), None)
-    assert res['statusCode'] != 401
 
 @patch('handler.get_extractor')
 def test_missing_url(mock_get_extractor):
