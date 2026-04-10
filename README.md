@@ -64,7 +64,7 @@ LAMBDA_FUNCTION_NAME = media-extractor
 
 Add those to GitHub Secrets to enable ongoing deployments.
 
-> **Re-running the setup workflow is safe** — each step checks whether the resource already exists and skips creation if so. Exception: if the workflow fails mid-way through API Gateway creation, delete the partially created API in the AWS console before re-running.
+> **Re-running the setup workflow is safe** — all steps are idempotent. If API Gateway was partially created, the workflow detects the missing route and automatically deletes and recreates it.
 
 ### Ongoing deploys
 

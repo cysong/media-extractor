@@ -143,15 +143,32 @@ jobs:
       - name: Create API Gateway
         id: apigw
         run: |
+          REGION="${{ github.event.inputs.aws_region }}"
+
           API_ID=$(aws apigatewayv2 get-apis \
-            --region ${{ github.event.inputs.aws_region }} \
+            --region $REGION \
             --query "Items[?Name=='$APP_NAME'].ApiId" --output text)
+
+          if [ -n "$API_ID" ]; then
+            # Check if route is fully configured; if not, delete and recreate
+            ROUTE_EXISTS=$(aws apigatewayv2 get-routes \
+              --api-id $API_ID --region $REGION \
+              --query "Items[?RouteKey=='POST /get-media'].RouteId" --output text)
+
+            if [ -z "$ROUTE_EXISTS" ]; then
+              echo "API exists but route is missing — deleting and recreating..."
+              aws apigatewayv2 delete-api --api-id $API_ID --region $REGION
+              API_ID=""
+            else
+              echo "API Gateway already fully configured, skipping."
+            fi
+          fi
 
           if [ -z "$API_ID" ]; then
             API_ID=$(aws apigatewayv2 create-api \
               --name $APP_NAME \
               --protocol-type HTTP \
-              --region ${{ github.event.inputs.aws_region }} \
+              --region $REGION \
               --query 'ApiId' --output text)
 
             INTEGRATION_ID=$(aws apigatewayv2 create-integration \
@@ -159,31 +176,31 @@ jobs:
               --integration-type AWS_PROXY \
               --integration-uri ${{ steps.lambda.outputs.function_arn }} \
               --payload-format-version "2.0" \
-              --region ${{ github.event.inputs.aws_region }} \
+              --region $REGION \
               --query 'IntegrationId' --output text)
 
             aws apigatewayv2 create-route \
               --api-id $API_ID \
               --route-key "POST /get-media" \
               --target "integrations/$INTEGRATION_ID" \
-              --region ${{ github.event.inputs.aws_region }}
+              --region $REGION
 
             aws apigatewayv2 create-stage \
               --api-id $API_ID \
               --stage-name '$default' \
               --auto-deploy \
-              --region ${{ github.event.inputs.aws_region }}
+              --region $REGION
 
             aws lambda add-permission \
               --function-name $APP_NAME \
               --statement-id "apigateway-invoke" \
               --action lambda:InvokeFunction \
               --principal apigateway.amazonaws.com \
-              --source-arn "arn:aws:execute-api:${{ github.event.inputs.aws_region }}:${{ steps.account.outputs.id }}:$API_ID/*/*/get-media" \
-              --region ${{ github.event.inputs.aws_region }}
+              --source-arn "arn:aws:execute-api:$REGION:${{ steps.account.outputs.id }}:$API_ID/*/*/get-media" \
+              --region $REGION 2>/dev/null || true
           fi
 
-          API_ENDPOINT="https://$API_ID.execute-api.${{ github.event.inputs.aws_region }}.amazonaws.com/get-media"
+          API_ENDPOINT="https://$API_ID.execute-api.$REGION.amazonaws.com/get-media"
           echo "endpoint=$API_ENDPOINT" >> $GITHUB_OUTPUT
 
       # ── Summary ───────────────────────────────────────────────────────────
