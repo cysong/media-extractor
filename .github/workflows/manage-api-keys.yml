@@ -1,0 +1,107 @@
+name: Manage API Keys
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - create
+          - disable
+          - enable
+          - list
+      key_name:
+        description: 'User/key name (required for create, disable, enable)'
+        required: false
+
+env:
+  APP_NAME: media-extractor
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  manage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: List API keys
+        if: github.event.inputs.action == 'list'
+        run: |
+          echo "## API Keys" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws apigateway get-api-keys \
+            --include-values \
+            --region $AWS_REGION \
+            --query 'items[].{Name:name, Enabled:enabled, ID:id}' \
+            --output table >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Create API key
+        if: github.event.inputs.action == 'create'
+        run: |
+          PLAN_ID=$(aws apigateway get-usage-plans \
+            --region $AWS_REGION \
+            --query "items[?name=='${APP_NAME}-plan'].id" --output text)
+
+          KEY_ID=$(aws apigateway create-api-key \
+            --name "${{ github.event.inputs.key_name }}" \
+            --enabled \
+            --region $AWS_REGION \
+            --query 'id' --output text)
+
+          KEY_VALUE=$(aws apigateway get-api-key \
+            --api-key $KEY_ID \
+            --include-value \
+            --region $AWS_REGION \
+            --query 'value' --output text)
+
+          aws apigateway create-usage-plan-key \
+            --usage-plan-id $PLAN_ID \
+            --key-id $KEY_ID \
+            --key-type API_KEY \
+            --region $AWS_REGION
+
+          echo "## API Key Created" >> $GITHUB_STEP_SUMMARY
+          echo "Name: ${{ github.event.inputs.key_name }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$KEY_VALUE" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "_Send this key to the user. It cannot be retrieved again from this workflow._" >> $GITHUB_STEP_SUMMARY
+
+      - name: Disable API key
+        if: github.event.inputs.action == 'disable'
+        run: |
+          KEY_ID=$(aws apigateway get-api-keys \
+            --region $AWS_REGION \
+            --query "items[?name=='${{ github.event.inputs.key_name }}'].id" --output text)
+
+          aws apigateway update-api-key \
+            --api-key $KEY_ID \
+            --patch-operations op=replace,path=/enabled,value=false \
+            --region $AWS_REGION
+
+          echo "## API Key Disabled" >> $GITHUB_STEP_SUMMARY
+          echo "**${{ github.event.inputs.key_name }}** has been disabled." >> $GITHUB_STEP_SUMMARY
+
+      - name: Enable API key
+        if: github.event.inputs.action == 'enable'
+        run: |
+          KEY_ID=$(aws apigateway get-api-keys \
+            --region $AWS_REGION \
+            --query "items[?name=='${{ github.event.inputs.key_name }}'].id" --output text)
+
+          aws apigateway update-api-key \
+            --api-key $KEY_ID \
+            --patch-operations op=replace,path=/enabled,value=true \
+            --region $AWS_REGION
+
+          echo "## API Key Enabled" >> $GITHUB_STEP_SUMMARY
+          echo "**${{ github.event.inputs.key_name }}** has been enabled." >> $GITHUB_STEP_SUMMARY

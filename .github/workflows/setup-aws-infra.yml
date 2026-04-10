@@ -7,13 +7,18 @@ on:
         description: 'AWS Region'
         required: true
         default: 'ap-southeast-2'
-      api_key:
-        description: 'API Key for x-api-key header (leave empty to disable auth)'
-        required: false
       yt_dlp_verbose:
         description: 'Enable yt-dlp verbose logging (true/false)'
         required: false
         default: 'false'
+      daily_quota:
+        description: 'Default API calls per day per user'
+        required: false
+        default: '200'
+      rate_limit:
+        description: 'Max requests per second per user'
+        required: false
+        default: '5'
 
 env:
   APP_NAME: media-extractor
@@ -135,7 +140,7 @@ jobs:
               --role ${{ steps.iam.outputs.role_arn }} \
               --timeout $LAMBDA_TIMEOUT \
               --memory-size $LAMBDA_MEMORY \
-              --environment "Variables={DYNAMODB_TABLE=$DYNAMODB_TABLE,API_KEY=${{ github.event.inputs.api_key }},YT_DLP_VERBOSE=${{ github.event.inputs.yt_dlp_verbose }}}" \
+              --environment "Variables={DYNAMODB_TABLE=$DYNAMODB_TABLE,YT_DLP_VERBOSE=${{ github.event.inputs.yt_dlp_verbose }}}" \
               --region ${{ github.event.inputs.aws_region }} \
               --query 'FunctionArn' --output text)
 
@@ -146,69 +151,139 @@ jobs:
 
           echo "function_arn=$FUNCTION_ARN" >> $GITHUB_OUTPUT
 
-      # ── 6. API Gateway ────────────────────────────────────────────────────
-      - name: Create API Gateway
+      # ── 6. REST API + Usage Plan ──────────────────────────────────────────
+      - name: Create REST API
         id: apigw
         run: |
           REGION="${{ github.event.inputs.aws_region }}"
+          ACCOUNT_ID="${{ steps.account.outputs.id }}"
+          LAMBDA_ARN="${{ steps.lambda.outputs.function_arn }}"
 
-          API_ID=$(aws apigatewayv2 get-apis \
+          # Check if API exists and is fully configured
+          API_ID=$(aws apigateway get-rest-apis \
             --region $REGION \
-            --query "Items[?Name=='$APP_NAME'].ApiId" --output text)
+            --query "items[?name=='$APP_NAME'].id" --output text)
 
           if [ -n "$API_ID" ]; then
-            # Check if route is fully configured; if not, delete and recreate
-            ROUTE_EXISTS=$(aws apigatewayv2 get-routes \
-              --api-id $API_ID --region $REGION \
-              --query "Items[?RouteKey=='POST /get-media'].RouteId" --output text)
+            METHOD_EXISTS=$(aws apigateway get-method \
+              --rest-api-id $API_ID \
+              --resource-id $(aws apigateway get-resources \
+                --rest-api-id $API_ID --region $REGION \
+                --query "items[?path=='/get-media'].id" --output text) \
+              --http-method POST \
+              --region $REGION \
+              --query 'httpMethod' --output text 2>/dev/null) || true
 
-            if [ -z "$ROUTE_EXISTS" ]; then
-              echo "API exists but route is missing — deleting and recreating..."
-              aws apigatewayv2 delete-api --api-id $API_ID --region $REGION
-              API_ID=""
+            if [ -n "$METHOD_EXISTS" ]; then
+              echo "REST API already fully configured, skipping."
             else
-              echo "API Gateway already fully configured, skipping."
+              echo "REST API exists but incomplete — deleting and recreating..."
+              aws apigateway delete-rest-api --rest-api-id $API_ID --region $REGION
+              API_ID=""
             fi
           fi
 
           if [ -z "$API_ID" ]; then
-            API_ID=$(aws apigatewayv2 create-api \
+            # Create REST API
+            API_ID=$(aws apigateway create-rest-api \
               --name $APP_NAME \
-              --protocol-type HTTP \
               --region $REGION \
-              --query 'ApiId' --output text)
+              --query 'id' --output text)
 
-            INTEGRATION_ID=$(aws apigatewayv2 create-integration \
-              --api-id $API_ID \
-              --integration-type AWS_PROXY \
-              --integration-uri ${{ steps.lambda.outputs.function_arn }} \
-              --payload-format-version "2.0" \
+            # Get root resource
+            ROOT_ID=$(aws apigateway get-resources \
+              --rest-api-id $API_ID --region $REGION \
+              --query 'items[0].id' --output text)
+
+            # Create /get-media resource
+            RESOURCE_ID=$(aws apigateway create-resource \
+              --rest-api-id $API_ID \
+              --parent-id $ROOT_ID \
+              --path-part get-media \
               --region $REGION \
-              --query 'IntegrationId' --output text)
+              --query 'id' --output text)
 
-            aws apigatewayv2 create-route \
-              --api-id $API_ID \
-              --route-key "POST /get-media" \
-              --target "integrations/$INTEGRATION_ID" \
+            # Create POST method with API key required
+            aws apigateway put-method \
+              --rest-api-id $API_ID \
+              --resource-id $RESOURCE_ID \
+              --http-method POST \
+              --authorization-type NONE \
+              --api-key-required \
               --region $REGION
 
-            aws apigatewayv2 create-stage \
-              --api-id $API_ID \
-              --stage-name '$default' \
-              --auto-deploy \
+            # Lambda proxy integration
+            aws apigateway put-integration \
+              --rest-api-id $API_ID \
+              --resource-id $RESOURCE_ID \
+              --http-method POST \
+              --type AWS_PROXY \
+              --integration-http-method POST \
+              --uri "arn:aws:apigateway:$REGION:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" \
               --region $REGION
 
+            # Deploy to prod stage
+            aws apigateway create-deployment \
+              --rest-api-id $API_ID \
+              --stage-name prod \
+              --region $REGION
+
+            # Lambda invoke permission
             aws lambda add-permission \
               --function-name $APP_NAME \
-              --statement-id "apigateway-invoke" \
+              --statement-id "apigateway-rest-invoke" \
               --action lambda:InvokeFunction \
               --principal apigateway.amazonaws.com \
-              --source-arn "arn:aws:execute-api:$REGION:${{ steps.account.outputs.id }}:$API_ID/*/*/get-media" \
-              --region $REGION 2>/dev/null || true
+              --source-arn "arn:aws:execute-api:$REGION:$ACCOUNT_ID:$API_ID/*/POST/get-media" \
+              --region $REGION
+
+            # Create Usage Plan
+            PLAN_ID=$(aws apigateway create-usage-plan \
+              --name "${APP_NAME}-plan" \
+              --api-stages "apiId=$API_ID,stage=prod" \
+              --throttle "burstLimit=10,rateLimit=${{ github.event.inputs.rate_limit }}" \
+              --quota "limit=${{ github.event.inputs.daily_quota }},period=DAY" \
+              --region $REGION \
+              --query 'id' --output text)
+
+            echo "plan_id=$PLAN_ID" >> $GITHUB_OUTPUT
+          else
+            PLAN_ID=$(aws apigateway get-usage-plans \
+              --region $REGION \
+              --query "items[?name=='${APP_NAME}-plan'].id" --output text)
+            echo "plan_id=$PLAN_ID" >> $GITHUB_OUTPUT
           fi
 
-          API_ENDPOINT="https://$API_ID.execute-api.$REGION.amazonaws.com/get-media"
+          API_ENDPOINT="https://$API_ID.execute-api.$REGION.amazonaws.com/prod/get-media"
+          echo "api_id=$API_ID" >> $GITHUB_OUTPUT
           echo "endpoint=$API_ENDPOINT" >> $GITHUB_OUTPUT
+
+      # ── 7. Create initial API key ─────────────────────────────────────────
+      - name: Create initial API key
+        id: apikey
+        run: |
+          REGION="${{ github.event.inputs.aws_region }}"
+          PLAN_ID="${{ steps.apigw.outputs.plan_id }}"
+
+          KEY_ID=$(aws apigateway create-api-key \
+            --name "${APP_NAME}-owner" \
+            --enabled \
+            --region $REGION \
+            --query 'id' --output text)
+
+          KEY_VALUE=$(aws apigateway get-api-key \
+            --api-key $KEY_ID \
+            --include-value \
+            --region $REGION \
+            --query 'value' --output text)
+
+          aws apigateway create-usage-plan-key \
+            --usage-plan-id $PLAN_ID \
+            --key-id $KEY_ID \
+            --key-type API_KEY \
+            --region $REGION
+
+          echo "key_value=$KEY_VALUE" >> $GITHUB_OUTPUT
 
       # ── Summary ───────────────────────────────────────────────────────────
       - name: Print summary
@@ -220,15 +295,23 @@ jobs:
           echo "POST ${{ steps.apigw.outputs.endpoint }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Add these remaining GitHub Secrets for CI/CD deploys:**" >> $GITHUB_STEP_SUMMARY
+          echo "**Your API Key (owner)**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "ECR_REPOSITORY     = $APP_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.apikey.outputs.key_value }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Quota: ${{ github.event.inputs.daily_quota }} calls/day, ${{ github.event.inputs.rate_limit }} req/s**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Add these GitHub Secrets for CI/CD deploys:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "ECR_REPOSITORY       = $APP_NAME" >> $GITHUB_STEP_SUMMARY
           echo "LAMBDA_FUNCTION_NAME = $APP_NAME" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Test:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "curl -X POST ${{ steps.apigw.outputs.endpoint }} \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -H 'x-api-key: ${{ steps.apikey.outputs.key_value }}' \\" >> $GITHUB_STEP_SUMMARY
           echo "  -H 'Content-Type: application/json' \\" >> $GITHUB_STEP_SUMMARY
           echo "  -d '{\"url\": \"https://x.com/NASA/status/1\"}'" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
