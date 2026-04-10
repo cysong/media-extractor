@@ -35,7 +35,7 @@ class BaseExtractor:
             formats = media_info.get('formats', [])
             response = self.filter_formats(formats)
         else:
-            response = {'error', 'No media info found'}
+            response = {'error': 'No media info found'}
 
         self.log(url, media_info, response)
         return response
