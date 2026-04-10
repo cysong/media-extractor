@@ -18,6 +18,3 @@ YT_DLP_OPTS = {
     'progress_hooks': [progress_hook],
 }
 
-ERROR_MESSAGES = {
-    'no_extractor': 'No suitable extractor found for this URL'
-}
