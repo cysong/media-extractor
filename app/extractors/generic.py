@@ -1,6 +1,6 @@
 import yt_dlp
 
-from config import YT_DLP_OPTS
+from app.config import YT_DLP_OPTS
 from .base import BaseExtractor
 from typing import List, Dict, Optional
 
