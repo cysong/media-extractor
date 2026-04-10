@@ -1,0 +1,15 @@
+.git
+.github
+.gitignore
+.dockerignore
+docs/
+scripts/
+tests/
+logs/
+*.md
+*.db
+*.shortcut
+__pycache__
+*.py[cod]
+.env
+.venv
