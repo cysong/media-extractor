@@ -59,4 +59,7 @@ class BaseExtractor:
         """
         Log media info and response to database
         """
-        MediaData(url, response, 'error' not in response).save()
+        try:
+            MediaData(url, response, 'error' not in response).save()
+        except Exception as e:
+            logger.error(f"Failed to log to DynamoDB: {e}")
