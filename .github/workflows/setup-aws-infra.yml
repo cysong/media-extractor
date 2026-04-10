@@ -10,6 +10,10 @@ on:
       api_key:
         description: 'API Key for x-api-key header (leave empty to disable auth)'
         required: false
+      yt_dlp_verbose:
+        description: 'Enable yt-dlp verbose logging (true/false)'
+        required: false
+        default: 'false'
 
 env:
   APP_NAME: media-extractor
@@ -131,7 +135,7 @@ jobs:
               --role ${{ steps.iam.outputs.role_arn }} \
               --timeout $LAMBDA_TIMEOUT \
               --memory-size $LAMBDA_MEMORY \
-              --environment "Variables={DYNAMODB_TABLE=$DYNAMODB_TABLE,API_KEY=${{ github.event.inputs.api_key }}}" \
+              --environment "Variables={DYNAMODB_TABLE=$DYNAMODB_TABLE,API_KEY=${{ github.event.inputs.api_key }},YT_DLP_VERBOSE=${{ github.event.inputs.yt_dlp_verbose }}}" \
               --region ${{ github.event.inputs.aws_region }} \
               --query 'FunctionArn' --output text)
 

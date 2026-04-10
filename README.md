@@ -66,6 +66,16 @@ Add those to GitHub Secrets to enable ongoing deployments.
 
 > **Re-running the setup workflow is safe** — all steps are idempotent. If API Gateway was partially created, the workflow detects the missing route and automatically deletes and recreates it.
 
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DYNAMODB_TABLE` | `media-extractor-records` | DynamoDB table name |
+| `API_KEY` | _(empty)_ | When set, all requests must include `x-api-key: <value>` header. Leave empty to disable auth. |
+| `YT_DLP_VERBOSE` | `false` | Set to `true` to enable verbose yt-dlp logging to CloudWatch. Useful for debugging extraction failures. |
+
+These are configured during the setup workflow and can be updated anytime in the Lambda console (Configuration → Environment variables) without redeploying.
+
 ### Ongoing deploys
 
 Every push to `main` automatically runs tests, builds a new container image, and deploys to Lambda.
@@ -81,4 +91,6 @@ python run_local.py <url>
 
 Import `media_extractor.shortcut` into the Shortcuts app. Share any video URL to the shortcut — it calls the API and presents download links for you to choose from.
 
-> Make sure your server is reachable from your iPhone (local network or public URL).
+After deploying, update the shortcut with your API Gateway endpoint. If you set an `API_KEY`, add an `x-api-key` header to the request in the shortcut.
+
+> Make sure your API Gateway endpoint is accessible from your iPhone.
