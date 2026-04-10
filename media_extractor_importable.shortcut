@@ -1,0 +1,142 @@
+{
+  "WFWorkflowMinimumClientVersion": 900,
+  "WFWorkflowMinimumClientVersionString": "900",
+  "WFWorkflowTypes": ["ActionExtension"],
+  "WFWorkflowInputContentItemClasses": ["WFURLContentItem"],
+  "WFWorkflowHasShortcutInputVariables": true,
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionDefaultAnswer": "",
+        "WFAskActionInputType": "Text",
+        "WFAskActionPrompt": "Enter API Key",
+        "WFVariableOutputName": "API_KEY"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFHTTPMethod": "POST",
+        "WFURL": "https://dyk1oekxi0.execute-api.ap-southeast-2.amazonaws.com/prod/get-media",
+        "WFHTTPHeaders": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": { "string": "x-api-key" },
+                  "WFSerializationType": "WFTextTokenString"
+                },
+                "WFValue": {
+                  "Value": {
+                    "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "API_KEY" } },
+                    "string": "\uFFFC"
+                  },
+                  "WFSerializationType": "WFTextTokenString"
+                }
+              }
+            ]
+          },
+          "WFSerializationType": "WFDictionaryFieldValue"
+        },
+        "WFHTTPBodyType": "JSON",
+        "WFHTTPRequestBody": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": { "string": "url" },
+                  "WFSerializationType": "WFTextTokenString"
+                },
+                "WFValue": {
+                  "Value": {
+                    "attachmentsByRange": { "{0, 1}": { "Type": "ExtensionInput" } },
+                    "string": "\uFFFC"
+                  },
+                  "WFSerializationType": "WFTextTokenString"
+                }
+              }
+            ]
+          },
+          "WFSerializationType": "WFDictionaryFieldValue"
+        },
+        "WFVariableOutputName": "response"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getdictionarykeys",
+      "WFWorkflowActionParameters": {
+        "WFInput": {
+          "Value": {
+            "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "response" } },
+            "string": "\uFFFC"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        },
+        "WFVariableOutputName": "qualities"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.choosefromlist",
+      "WFWorkflowActionParameters": {
+        "WFChooseFromListActionPrompt": "Select quality",
+        "WFInput": {
+          "Value": {
+            "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "qualities" } },
+            "string": "\uFFFC"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        },
+        "WFVariableOutputName": "selected"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getdictionaryvalue",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": {
+          "Value": {
+            "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "selected" } },
+            "string": "\uFFFC"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        },
+        "WFInput": {
+          "Value": {
+            "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "response" } },
+            "string": "\uFFFC"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        },
+        "WFVariableOutputName": "video_url"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFHTTPMethod": "GET",
+        "WFURL": {
+          "Value": {
+            "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "video_url" } },
+            "string": "\uFFFC"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        },
+        "WFVariableOutputName": "video"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.share",
+      "WFWorkflowActionParameters": {
+        "WFInput": {
+          "Value": {
+            "attachmentsByRange": { "{0, 1}": { "Type": "Variable", "VariableName": "video" } },
+            "string": "\uFFFC"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        }
+      }
+    }
+  ]
+}
