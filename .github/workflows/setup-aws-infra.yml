@@ -10,15 +10,15 @@ on:
       yt_dlp_verbose:
         description: 'Enable yt-dlp verbose logging (true/false)'
         required: false
-        default: 'false'
+        default: 'true'
       daily_quota:
         description: 'Default API calls per day per user'
         required: false
-        default: '200'
+        default: '100'
       rate_limit:
         description: 'Max requests per second per user'
         required: false
-        default: '5'
+        default: '1'
 
 env:
   APP_NAME: media-extractor
