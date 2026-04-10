@@ -1,111 +1,61 @@
 import json
-from datetime import datetime
-from database import get_db_connection
+import os
+import uuid
+from datetime import datetime, timezone
+
+import boto3
+from boto3.dynamodb.conditions import Key
+
+TABLE_NAME = os.environ.get('DYNAMODB_TABLE', 'media-extractor-records')
+_dynamodb = boto3.resource('dynamodb')
+_table = _dynamodb.Table(TABLE_NAME)
+
 
 class MediaData:
-    def __init__(self, url, media, response, success=False):
+    def __init__(self, url: str, response: dict, success: bool):
+        self.id = str(uuid.uuid4())
         self.url = url
-        self.media = json.dumps(media, indent=4)  # 转换为 JSON 格式存储
-        self.response = json.dumps(response, indent=4)  # 转换为 JSON 格式存储
-        self.success = 1 if success else 0  # 1 表示成功，0 表示失败
-        self.created_at = datetime.now()
+        self.response = json.dumps(response)
+        self.success = success
+        self.created_at = datetime.now(timezone.utc).isoformat()
 
     def save(self):
-        """
-        保存记录到数据库
-        """
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO media_data (url, media, response, success, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (self.url, self.media, self.response, self.success, self.created_at))
-            conn.commit()
-            return cursor.lastrowid
+        _table.put_item(Item={
+            'id': self.id,
+            'url': self.url,
+            'response': self.response,
+            'success': self.success,
+            'created_at': self.created_at,
+        })
+        return self.id
 
     @staticmethod
-    def get_by_id(record_id):
-        """
-        根据 ID 查询记录
-        """
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM media_data WHERE id = ?', (record_id,))
-            row = cursor.fetchone()
-            if row:
-                return {
-                    'id': row[0],
-                    'url': row[1],
-                    'media': json.loads(row[2]),  # 转换为字典格式返回
-                    'response': json.loads(row[3]),  # 转换为字典格式返回
-                    'success': bool(row[4]),  # 转换为布尔值
-                    'created_at': row[5]
-                }
-            return None
+    def get_by_id(record_id: str):
+        result = _table.get_item(Key={'id': record_id})
+        return _parse(result.get('Item'))
 
     @staticmethod
     def list_all():
-        """
-        列出所有记录
-        """
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM media_data ORDER BY created_at DESC')
-            rows = cursor.fetchall()
-            return [
-                {
-                    'id': row[0],
-                    'url': row[1],
-                    'media': json.loads(row[2]),
-                    'response': json.loads(row[3]),
-                    'success': bool(row[4]),
-                    'created_at': row[5]
-                }
-                for row in rows
-            ]
+        result = _table.scan()
+        items = sorted(result['Items'], key=lambda x: x['created_at'], reverse=True)
+        return [_parse(item) for item in items]
 
     @staticmethod
-    def filter_by_created_at(start_date, end_date):
-        """
-        根据创建时间段查询
-        """
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT * FROM media_data 
-                WHERE created_at BETWEEN ? AND ?
-                ORDER BY created_at DESC
-            ''', (start_date, end_date))
-            rows = cursor.fetchall()
-            return [
-                {
-                    'id': row[0],
-                    'url': row[1],
-                    'media': json.loads(row[2]),
-                    'response': json.loads(row[3]),
-                    'success': bool(row[4]),
-                    'created_at': row[5]
-                }
-                for row in rows
-            ]
+    def filter_by_success(success: bool):
+        result = _table.scan(
+            FilterExpression=Key('success').eq(success)
+        )
+        items = sorted(result['Items'], key=lambda x: x['created_at'], reverse=True)
+        return [_parse(item) for item in items]
 
-    @staticmethod
-    def filter_by_success(success):
-        """
-        根据 success 字段过滤查询
-        """
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM media_data WHERE success = ? ORDER BY created_at DESC', (1 if success else 0,))
-            rows = cursor.fetchall()
-            return [
-                {
-                    'id': row[0],
-                    'url': row[1],
-                    'media': json.loads(row[2]),
-                    'response': json.loads(row[3]),
-                    'success': bool(row[4]),
-                    'created_at': row[5]
-                }
-                for row in rows
-            ]
+
+def _parse(item: dict):
+    if not item:
+        return None
+    return {
+        'id': item['id'],
+        'url': item['url'],
+        'response': json.loads(item['response']),
+        'success': item['success'],
+        'created_at': item['created_at'],
+    }

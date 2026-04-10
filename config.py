@@ -1,7 +1,5 @@
 from app.log import logger, progress_hook
 
-DATABASE = 'media.db'
-
 YT_DLP_OPTS = {
     'quiet': False,
     'verbose': True,

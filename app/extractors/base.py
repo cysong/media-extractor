@@ -59,4 +59,4 @@ class BaseExtractor:
         """
         Log media info and response to database
         """
-        MediaData(url, media, response, 'error' not in response).save()
+        MediaData(url, response, 'error' not in response).save()

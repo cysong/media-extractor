@@ -1,4 +1,3 @@
-Flask==3.0.3
 yt-dlp
-Flask-Testing==0.8.1
+boto3
 pytest==8.3.2
