@@ -4,11 +4,18 @@ import uuid
 from datetime import datetime, timezone
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr
 
 TABLE_NAME = os.environ.get('DYNAMODB_TABLE', 'media-extractor-records')
-_dynamodb = boto3.resource('dynamodb')
-_table = _dynamodb.Table(TABLE_NAME)
+
+_table = None
+
+
+def _get_table():
+    global _table
+    if _table is None:
+        _table = boto3.resource('dynamodb').Table(TABLE_NAME)
+    return _table
 
 
 class MediaData:
@@ -20,7 +27,7 @@ class MediaData:
         self.created_at = datetime.now(timezone.utc).isoformat()
 
     def save(self):
-        _table.put_item(Item={
+        _get_table().put_item(Item={
             'id': self.id,
             'url': self.url,
             'response': self.response,
@@ -31,19 +38,19 @@ class MediaData:
 
     @staticmethod
     def get_by_id(record_id: str):
-        result = _table.get_item(Key={'id': record_id})
+        result = _get_table().get_item(Key={'id': record_id})
         return _parse(result.get('Item'))
 
     @staticmethod
     def list_all():
-        result = _table.scan()
+        result = _get_table().scan()
         items = sorted(result['Items'], key=lambda x: x['created_at'], reverse=True)
         return [_parse(item) for item in items]
 
     @staticmethod
     def filter_by_success(success: bool):
-        result = _table.scan(
-            FilterExpression=Key('success').eq(success)
+        result = _get_table().scan(
+            FilterExpression=Attr('success').eq(success)
         )
         items = sorted(result['Items'], key=lambda x: x['created_at'], reverse=True)
         return [_parse(item) for item in items]
