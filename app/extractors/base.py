@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Dict, List, final
-from venv import logger
 
+from app.log import logger
 from app.models import MediaData
 
 
