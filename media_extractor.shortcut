@@ -1,6 +1,15 @@
 {
     "actions": [
         {
+            "type": "SetVariable",
+            "name": "shortcut_info",
+            "value": {
+                "author": "cysong",
+                "version": "2",
+                "description": "Extracts video download URLs. Supports 1000+ sites. Issues: https://github.com/cysong/media-extractor"
+            }
+        },
+        {
             "type": "AskForInput",
             "prompt": "Enter API Key",
             "inputType": "Text",
@@ -8,12 +17,19 @@
         },
         {
             "type": "GetSharedItems",
-            "name": "shared_url"
+            "name": "shared_content"
         },
         {
             "type": "If",
-            "condition": "shared_url is empty",
+            "condition": "shared_content != ''",
             "actions": [
+                {
+                    "type": "GetVariable",
+                    "variable": "shared_content",
+                    "name": "shared_url"
+                }
+            ],
+            "otherwise": [
                 {
                     "type": "GetClipboard",
                     "name": "clipboard"
@@ -32,7 +48,7 @@
                         {
                             "type": "ShowAlert",
                             "title": "Error",
-                            "message": "No valid URL found. Copy a URL to clipboard and try again."
+                            "message": "No valid URL found. Make sure a valid link is in your clipboard."
                         }
                     ]
                 }
@@ -52,9 +68,42 @@
             "name": "response"
         },
         {
+            "type": "If",
+            "condition": "response.statusCode != 200",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "Error",
+                    "message": "Request failed. Status: response.statusCode"
+                }
+            ]
+        },
+        {
+            "type": "If",
+            "condition": "response is not valid",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "Error",
+                    "message": "Failed to get content. Check if the URL is valid."
+                }
+            ]
+        },
+        {
             "type": "GetDictionaryKeys",
             "dictionary": "response",
             "name": "qualities"
+        },
+        {
+            "type": "If",
+            "condition": "qualities is empty",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "Error",
+                    "message": "No resolutions found. Check the video URL."
+                }
+            ]
         },
         {
             "type": "ChooseFromList",
@@ -73,6 +122,17 @@
             "url": "video_url",
             "method": "GET",
             "name": "video"
+        },
+        {
+            "type": "If",
+            "condition": "video is not valid",
+            "actions": [
+                {
+                    "type": "ShowAlert",
+                    "title": "Error",
+                    "message": "Download failed. Please retry."
+                }
+            ]
         },
         {
             "type": "Share",
