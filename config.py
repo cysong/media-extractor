@@ -1,8 +1,12 @@
+import os
+
 from app.log import logger, progress_hook
 
+_verbose = os.environ.get('YT_DLP_VERBOSE', 'false').lower() == 'true'
+
 YT_DLP_OPTS = {
-    'quiet': False,
-    'verbose': True,
+    'quiet': not _verbose,
+    'verbose': _verbose,
     'noplaylist': True,
     'skip_download': True,
     'check_formats': False,
