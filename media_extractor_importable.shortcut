@@ -4,13 +4,19 @@
   "WFWorkflowTypes": ["ActionExtension"],
   "WFWorkflowInputContentItemClasses": ["WFURLContentItem"],
   "WFWorkflowHasShortcutInputVariables": true,
+  "WFWorkflowImportQuestions": [
+    {
+      "ActionIndex": 0,
+      "ParameterKey": "WFTextActionText",
+      "Text": "Enter your API Key",
+      "DefaultValue": ""
+    }
+  ],
   "WFWorkflowActions": [
     {
-      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionIdentifier": "is.workflow.actions.text",
       "WFWorkflowActionParameters": {
-        "WFAskActionDefaultAnswer": "",
-        "WFAskActionInputType": "Text",
-        "WFAskActionPrompt": "Enter API Key",
+        "WFTextActionText": "YOUR_API_KEY_HERE",
         "WFVariableOutputName": "API_KEY"
       }
     },
