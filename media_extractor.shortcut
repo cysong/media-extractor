@@ -5,9 +5,15 @@
             "name": "快捷指令信息",
             "value": {
                 "作者": "cysong",
-                "版本": "1",
+                "版本": "2",
                 "描述": "此快捷指令用于提取视频下载地址，理论上支持超过1000+网站，如果有任何问题欢迎提issue，仓库地址：https://github.com/cysong/media-extractor"
             }
+        },
+        {
+            "type": "AskForInput",
+            "prompt": "请输入 API Key",
+            "inputType": "Text",
+            "name": "API_KEY"
         },
         {
             "type": "GetSharedItems",
@@ -51,8 +57,12 @@
         },
         {
             "type": "GetContentsOfURL",
-            "url": "https://media-extractor.azurewebsites.net/get-media",
+            "url": "https://dyk1oekxi0.execute-api.ap-southeast-2.amazonaws.com/prod/get-media",
             "method": "POST",
+            "headers": {
+                "x-api-key": "API_KEY",
+                "Content-Type": "application/json"
+            },
             "requestBody": {
                 "url": "获取共享的 URL"
             },
